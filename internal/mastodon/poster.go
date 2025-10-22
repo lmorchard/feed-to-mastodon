@@ -49,7 +49,7 @@ func New(server, accessToken, visibility, contentWarning string) (*Poster, error
 func (p *Poster) Post(content string, dryRun bool) error {
 	if dryRun {
 		logrus.Info("DRY RUN: Would post to Mastodon")
-		logrus.Debugf("DRY RUN: Content: %s", content)
+		logrus.Debugf("DRY RUN: Content:\n%s", content)
 		return nil
 	}
 
