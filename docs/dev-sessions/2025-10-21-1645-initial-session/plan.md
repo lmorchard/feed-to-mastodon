@@ -13,17 +13,22 @@ feed-to-mastodon/
 │       └── main.go              # Entry point
 ├── internal/
 │   ├── config/                  # Configuration management
-│   │   └── config.go
+│   │   ├── config.go
+│   │   └── config_test.go       # Unit tests
 │   ├── database/                # Database layer
 │   │   ├── db.go
+│   │   ├── db_test.go           # Unit tests
 │   │   └── migrations.go
 │   ├── feed/                    # Feed fetching
-│   │   └── fetcher.go
+│   │   ├── fetcher.go
+│   │   └── fetcher_test.go      # Unit tests
 │   ├── mastodon/                # Mastodon posting
-│   │   └── poster.go
+│   │   ├── poster.go
+│   │   └── poster_test.go       # Unit tests
 │   ├── template/                # Template rendering
-│   │   └── renderer.go
-│   └── commands/                # CLI commands
+│   │   ├── renderer.go
+│   │   └── renderer_test.go     # Unit tests
+│   └── commands/                # CLI commands (no tests)
 │       ├── root.go
 │       ├── init.go
 │       ├── fetch.go
@@ -120,6 +125,48 @@ Notes:
 - Can load config from YAML
 - Defaults are applied correctly
 - Validation catches missing required fields
+
+---
+
+#### Step 2.5: Configuration Unit Tests
+
+**Goal:** Add comprehensive unit tests for the configuration module.
+
+**Prompt:**
+```
+Add unit tests for internal/config/config.go in internal/config/config_test.go:
+
+1. Test LoadConfig():
+   - Test loading valid YAML config
+   - Test with missing config file (should use defaults)
+   - Test with partial config (should merge with defaults)
+   - Test environment variable binding
+
+2. Test Validate():
+   - Test with all required fields present (should pass)
+   - Test with missing FeedURL (should fail)
+   - Test with missing MastodonServer (should fail)
+   - Test with missing MastodonAccessToken (should fail)
+   - Test with invalid PostVisibility value (should fail)
+   - Test with valid PostVisibility values: public, unlisted, private, direct
+
+3. Test default values:
+   - Verify TemplateFile defaults to "template.txt"
+   - Verify DatabasePath defaults to "feed-to-mastodon.db"
+   - Verify CharacterLimit defaults to 500
+   - Verify MaxItems defaults to 0
+   - Verify PostVisibility defaults to "public"
+
+Notes:
+- Use table-driven tests where appropriate
+- Create temporary config files for testing
+- Clean up test files in defer statements
+```
+
+**Validation:**
+- All config tests pass
+- Test coverage is comprehensive
+- Edge cases are handled
 
 ---
 
@@ -245,6 +292,69 @@ Notes:
 
 ---
 
+#### Step 4.5: Database Unit Tests
+
+**Goal:** Add comprehensive unit tests for the database module.
+
+**Prompt:**
+```
+Add unit tests for internal/database/ in internal/database/db_test.go:
+
+1. Test database initialization:
+   - Test New() creates database file
+   - Test schema is created correctly
+   - Test migrations table exists
+   - Test opening existing database doesn't error
+
+2. Test SaveEntry():
+   - Test saving new entry
+   - Test saving duplicate entry (should be ignored)
+   - Test with valid JSON data
+   - Test fetched_at is set automatically
+   - Test posted_at starts as NULL
+
+3. Test GetUnpostedEntries():
+   - Test returns entries with NULL posted_at
+   - Test correct ordering (oldest first)
+   - Test limit parameter works (0 for unlimited)
+   - Test returns empty slice when no unposted entries
+
+4. Test MarkAsPosted():
+   - Test marks entry as posted with timestamp
+   - Test error on non-existent entry ID
+   - Test posted_at is set to non-NULL
+
+5. Test GetStats():
+   - Test with empty database (0, 0, 0)
+   - Test counts after adding entries
+   - Test counts after posting some entries
+   - Test counts are accurate
+
+6. Test GetLastFetchTime() and GetLastPostTime():
+   - Test returns nil when no entries exist
+   - Test returns correct timestamp
+   - Test returns most recent timestamp when multiple entries
+
+7. Test migrations:
+   - Test GetMigrationVersion() on new database
+   - Test migrations are applied in order
+   - Test re-running migrations doesn't error
+   - Test migration version is tracked correctly
+
+Notes:
+- Use in-memory SQLite database (:memory:) for faster tests
+- Use temporary files for tests that need persistent storage
+- Clean up test databases in defer statements
+- Test concurrent access if relevant
+```
+
+**Validation:**
+- All database tests pass
+- Test coverage includes happy path and error cases
+- Migrations are thoroughly tested
+
+---
+
 ### Phase 3: Core Business Logic
 
 #### Step 5: Feed Fetching
@@ -294,6 +404,53 @@ Notes:
 - Generates consistent IDs for entries
 - Saves entries to database
 - Handles feed errors gracefully
+
+---
+
+#### Step 5.5: Feed Fetching Unit Tests
+
+**Goal:** Add unit tests for the feed fetching module.
+
+**Prompt:**
+```
+Add unit tests for internal/feed/fetcher.go in internal/feed/fetcher_test.go:
+
+1. Test GenerateEntryID():
+   - Test with item that has GUID (should return GUID)
+   - Test with item without GUID (should return SHA hash)
+   - Test hash is consistent for same input
+   - Test hash is different for different inputs
+   - Test handles nil Published date gracefully
+   - Test handles empty Title/Link gracefully
+
+2. Test Fetch():
+   - Mock/stub HTTP responses for testing (or use test server)
+   - Test fetching valid RSS feed
+   - Test fetching valid Atom feed
+   - Test handling network errors
+   - Test handling invalid feed data
+   - Test handling 404 responses
+   - Test parsing feed with multiple items
+
+3. Test SaveEntriesToDB():
+   - Test with mock database
+   - Test counts saved entries correctly
+   - Test marshals items to JSON correctly
+   - Test generates IDs for all items
+   - Test handles empty feed (0 items)
+   - Test handles database errors gracefully
+
+Notes:
+- Use httptest.Server for testing HTTP requests
+- Create sample RSS/Atom feed XML for testing
+- Mock database interface if needed
+- Test with real gofeed.Item structures
+```
+
+**Validation:**
+- All feed tests pass
+- ID generation is thoroughly tested
+- Network error handling is tested
 
 ---
 
@@ -352,6 +509,62 @@ Notes:
 
 ---
 
+#### Step 6.5: Template Rendering Unit Tests
+
+**Goal:** Add unit tests for the template rendering module.
+
+**Prompt:**
+```
+Add unit tests for internal/template/renderer.go in internal/template/renderer_test.go:
+
+1. Test truncate function:
+   - Test string shorter than limit (returns as-is)
+   - Test string longer than limit (truncates and adds "...")
+   - Test with multi-byte characters (UTF-8 safety)
+   - Test with emoji characters
+   - Test with exactly limit length
+   - Test empty string
+   - Test zero limit
+
+2. Test New():
+   - Test loading valid template file
+   - Test template file not found error
+   - Test invalid template syntax error
+   - Test custom functions are registered (truncate)
+   - Test character limit is stored
+
+3. Test Render():
+   - Test rendering simple template
+   - Test rendering with all item fields populated
+   - Test rendering with minimal item fields
+   - Test using truncate function in template
+   - Test with invalid JSON (should error)
+   - Test character limit warning is logged when exceeded
+   - Test template execution errors
+
+4. Test GetDefaultTemplate():
+   - Test returns non-empty string
+   - Test returned template is valid
+
+5. Integration tests:
+   - Test complete flow: load template, render entry
+   - Test with real gofeed.Item data structure
+   - Test complex templates with conditionals
+
+Notes:
+- Create temporary template files for testing
+- Use sample gofeed.Item JSON for realistic tests
+- Verify logged warnings for oversized content
+- Clean up temp files in defer
+```
+
+**Validation:**
+- All template tests pass
+- Truncate function handles Unicode correctly
+- Template rendering edge cases covered
+
+---
+
 #### Step 7: Mastodon Posting
 
 **Goal:** Implement Mastodon posting functionality.
@@ -404,6 +617,60 @@ Notes:
 - Dry run mode doesn't make API calls
 - Real posting works
 - Handles posting errors gracefully
+
+---
+
+#### Step 7.5: Mastodon Posting Unit Tests
+
+**Goal:** Add unit tests for the Mastodon posting module.
+
+**Prompt:**
+```
+Add unit tests for internal/mastodon/poster.go in internal/mastodon/poster_test.go:
+
+1. Test New():
+   - Test with valid server and token
+   - Test with valid visibility values (public, unlisted, private, direct)
+   - Test with invalid visibility value (should error)
+   - Test content warning is stored correctly
+   - Test client is initialized
+
+2. Test Post() with dry run:
+   - Test dry run = true doesn't make API calls
+   - Test dry run logs appropriate messages
+   - Test dry run returns no error
+   - Mock the logger to verify log output
+
+3. Test Post() with real posting:
+   - Mock Mastodon API client
+   - Test successful post
+   - Test post with visibility setting
+   - Test post with content warning
+   - Test API error handling
+   - Test network error handling
+   - Verify correct Toot structure is created
+
+4. Test PostEntries():
+   - Mock renderer and database entries
+   - Test posting multiple entries
+   - Test with dry run mode
+   - Test counter increments correctly
+   - Test continues on individual posting errors
+   - Test returns correct count of posted entries
+   - Test with empty entries list
+
+Notes:
+- Mock the Mastodon client interface to avoid real API calls
+- Use test server or mocks for HTTP interactions
+- Verify logging at appropriate levels
+- Test error scenarios thoroughly
+```
+
+**Validation:**
+- All Mastodon tests pass
+- Dry run mode is thoroughly tested
+- API interactions are properly mocked
+- Error handling is comprehensive
 
 ---
 
@@ -741,10 +1008,11 @@ Add documentation and build setup:
 
 2. Verify Makefile has appropriate targets:
    - build: compile the binary
-   - test: run tests
+   - test: run tests with `go test ./internal/...`
    - lint: run golangci-lint
    - format: run gofumpt
    - clean: remove build artifacts
+   - coverage: generate test coverage report
 
 3. Create README.md with:
    - Project description
@@ -782,12 +1050,12 @@ Notes:
 
 ## Summary of Prompts
 
-This plan provides 14 sequential prompts that:
+This plan provides 19 sequential prompts that:
 
-1. **Phase 1 (Steps 1-2):** Set up project foundation and configuration
-2. **Phase 2 (Steps 3-4):** Implement database layer with migrations
-3. **Phase 3 (Steps 5-7):** Build core business logic (feed, template, mastodon)
-4. **Phase 4 (Steps 8-12):** Implement all CLI commands
+1. **Phase 1 (Steps 1-2.5):** Set up project foundation, configuration, and tests
+2. **Phase 2 (Steps 3-4.5):** Implement database layer with migrations and tests
+3. **Phase 3 (Steps 5-7.5):** Build core business logic (feed, template, mastodon) with tests
+4. **Phase 4 (Steps 8-12):** Implement all CLI commands (no tests needed per spec)
 5. **Phase 5 (Steps 13-14):** Integration and polish
 
 Each step:
@@ -796,24 +1064,30 @@ Each step:
 - Produces working, integrated code
 - Is small enough to implement safely
 - Is large enough to make meaningful progress
+- Includes unit tests for all internal modules (not commands)
 
 ## Dependency Graph
 
 ```
-Step 1 (Init)
+Step 1 (Project Init)
   └─> Step 2 (Config)
-        └─> Step 3 (DB Schema)
-              └─> Step 4 (DB Operations)
-                    ├─> Step 5 (Feed Fetching)
-                    ├─> Step 6 (Templates)
-                    └─> Step 7 (Mastodon)
-                          └─> Step 8 (Root Command)
-                                ├─> Step 9 (Init Cmd)
-                                ├─> Step 10 (Fetch Cmd)
-                                ├─> Step 11 (Status Cmd)
-                                └─> Step 12 (Post Cmd)
-                                      ├─> Step 13 (Integration)
-                                      └─> Step 14 (Docs)
+        └─> Step 2.5 (Config Tests)
+              └─> Step 3 (DB Schema)
+                    └─> Step 4 (DB Operations)
+                          └─> Step 4.5 (DB Tests)
+                                ├─> Step 5 (Feed Fetching)
+                                │     └─> Step 5.5 (Feed Tests)
+                                ├─> Step 6 (Templates)
+                                │     └─> Step 6.5 (Template Tests)
+                                └─> Step 7 (Mastodon)
+                                      └─> Step 7.5 (Mastodon Tests)
+                                            └─> Step 8 (Root Command)
+                                                  ├─> Step 9 (Init Cmd)
+                                                  ├─> Step 10 (Fetch Cmd)
+                                                  ├─> Step 11 (Status Cmd)
+                                                  └─> Step 12 (Post Cmd)
+                                                        ├─> Step 13 (Integration)
+                                                        └─> Step 14 (Docs)
 ```
 
 ## Notes for Implementation
@@ -827,3 +1101,8 @@ Step 1 (Init)
 - Use prepared statements for SQL
 - Close resources properly with defer
 - Test incrementally as you build
+- Run `go test ./internal/...` after each test step to verify all tests pass
+- Use table-driven tests where appropriate
+- Mock external dependencies (HTTP, database, Mastodon API) in tests
+- Aim for high test coverage in internal modules
+- Clean up test resources (files, databases) in defer statements
