@@ -16,6 +16,7 @@ import (
 type Renderer struct {
 	tmpl           *template.Template
 	characterLimit int
+	feed           *gofeed.Feed
 }
 
 // TemplateData holds the data passed to templates.
@@ -82,6 +83,11 @@ func truncate(s string, maxLen interface{}) string {
 	return string(runes[:limit-3]) + "..."
 }
 
+// SetFeed sets the feed metadata for use in templates.
+func (r *Renderer) SetFeed(feed *gofeed.Feed) {
+	r.feed = feed
+}
+
 // Render renders the template with the given entry data.
 func (r *Renderer) Render(entryJSON []byte) (string, error) {
 	// Unmarshal entry JSON into gofeed.Item
@@ -93,6 +99,7 @@ func (r *Renderer) Render(entryJSON []byte) (string, error) {
 	// Create template data
 	data := TemplateData{
 		Item: &item,
+		Feed: r.feed,
 	}
 
 	// Execute template
@@ -115,5 +122,12 @@ func (r *Renderer) Render(entryJSON []byte) (string, error) {
 // GetDefaultTemplate returns a simple default template.
 func GetDefaultTemplate() string {
 	return `{{.Item.Title}}
-{{.Item.Link}}`
+
+{{if .Item.Description}}{{truncate .Item.Description 100}}{{else if .Item.Content}}{{truncate .Item.Content 100}}{{end}}
+
+{{.Item.Link}}
+
+{{range .Item.Categories}}#{{.}} {{end}}
+
+Via {{.Feed.Title}}`
 }

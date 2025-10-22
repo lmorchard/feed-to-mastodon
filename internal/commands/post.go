@@ -1,17 +1,22 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/lorchard/feed-to-mastodon/internal/config"
 	"github.com/lorchard/feed-to-mastodon/internal/database"
 	"github.com/lorchard/feed-to-mastodon/internal/mastodon"
 	"github.com/lorchard/feed-to-mastodon/internal/template"
+	"github.com/mmcdole/gofeed"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var dryRun bool
+var (
+	dryRun   bool
+	maxPosts int
+)
 
 // NewPostCmd creates the post command.
 func NewPostCmd() *cobra.Command {
@@ -27,6 +32,7 @@ Use --dry-run to preview what would be posted without actually posting.`,
 	}
 
 	postCmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview posts without actually posting to Mastodon")
+	postCmd.Flags().IntVar(&maxPosts, "posts", 0, "maximum number of entries to post (0 = all, overrides config posts_per_run)")
 
 	return postCmd
 }
@@ -56,8 +62,13 @@ func runPost(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	// Get unposted entries
+	// Determine the limit: use flag if set, otherwise use config
 	limit := cfg.MaxItems
+	if cmd.Flags().Changed("posts") {
+		limit = maxPosts
+	}
+
+	// Get unposted entries
 	entries, err := db.GetUnpostedEntries(limit)
 	if err != nil {
 		return fmt.Errorf("failed to get unposted entries: %w", err)
@@ -75,6 +86,19 @@ func runPost(cmd *cobra.Command, args []string) error {
 	renderer, err := template.New(cfg.TemplateFile, cfg.CharacterLimit)
 	if err != nil {
 		return fmt.Errorf("failed to create template renderer: %w", err)
+	}
+
+	// Load feed metadata from database for use in templates
+	feedMetadata, err := db.GetSetting("feed_metadata")
+	if err != nil {
+		logrus.Warnf("Failed to load feed metadata: %v", err)
+	} else if feedMetadata != nil && *feedMetadata != "" {
+		var feed gofeed.Feed
+		if err := json.Unmarshal([]byte(*feedMetadata), &feed); err != nil {
+			logrus.Warnf("Failed to unmarshal feed metadata: %v", err)
+		} else {
+			renderer.SetFeed(&feed)
+		}
 	}
 
 	// Create Mastodon poster

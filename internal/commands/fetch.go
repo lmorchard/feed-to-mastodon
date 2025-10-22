@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/lorchard/feed-to-mastodon/internal/config"
@@ -66,6 +67,16 @@ func runFetch(cmd *cobra.Command, args []string) error {
 	saved, err := fetcher.SaveEntriesToDB(feedData, db)
 	if err != nil {
 		return fmt.Errorf("failed to save entries: %w", err)
+	}
+
+	// Store feed metadata for use in templates
+	feedJSON, err := json.Marshal(feedData)
+	if err != nil {
+		logrus.Warnf("Failed to marshal feed data: %v", err)
+	} else {
+		if err := db.SetSetting("feed_metadata", string(feedJSON)); err != nil {
+			logrus.Warnf("Failed to store feed metadata: %v", err)
+		}
 	}
 
 	// Get stats after fetch
