@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"os"
+	"text/template"
 	"unicode/utf8"
 
 	"github.com/mmcdole/gofeed"
