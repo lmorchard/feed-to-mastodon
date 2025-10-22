@@ -1,0 +1,130 @@
+name: Release
+
+# This workflow assumes tags are created from main branch after CI has passed.
+# It builds multi-platform release artifacts without redundant CI.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install cross-compilation and static linking dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        # Install static linking libraries for all Linux builds
+        sudo apt-get install -y libc6-dev build-essential
+        # Install cross-compilation tools for ARM64
+        if [ "${{ matrix.goarch }}" = "arm64" ]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        fi
+
+    - name: Set version variables
+      shell: bash
+      run: |
+        echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        echo "COMMIT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+        echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 1
+        VERSION: ${{ env.VERSION }}
+        COMMIT: ${{ env.COMMIT }}
+        DATE: ${{ env.DATE }}
+      shell: bash
+      run: |
+        # Use make build for consistent build logic
+        make build
+
+        # Rename to expected output for Windows
+        if [ "$GOOS" = "windows" ] && [ -f feed-to-mastodon ]; then
+          mv feed-to-mastodon feed-to-mastodon.exe
+        fi
+
+    - name: Create archive (Unix)
+      if: matrix.goos != 'windows'
+      shell: bash
+      run: |
+        archive_name="feed-to-mastodon_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}"
+        tar -czf "${archive_name}.tar.gz" "feed-to-mastodon"
+        echo "ARCHIVE=${archive_name}.tar.gz" >> $GITHUB_ENV
+
+    - name: Create archive (Windows)
+      if: matrix.goos == 'windows'
+      shell: powershell
+      run: |
+        $archive_name = "feed-to-mastodon_$($env:VERSION)_${{ matrix.goos }}_${{ matrix.goarch }}"
+        Compress-Archive -Path "feed-to-mastodon.exe" -DestinationPath "${archive_name}.zip"
+        echo "ARCHIVE=${archive_name}.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARCHIVE }}
+        path: ${{ env.ARCHIVE }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
+
+    - name: Generate checksums
+      run: |
+        cd dist
+        sha256sum * > checksums.txt
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
+        generate_release_notes: true
+        draft: false
+        prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
