@@ -144,7 +144,7 @@ func TestFetch(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/rss+xml")
-			w.Write([]byte(rssContent))
+			_, _ = w.Write([]byte(rssContent))
 		}))
 		defer server.Close()
 
@@ -177,7 +177,7 @@ func TestFetch(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/atom+xml")
-			w.Write([]byte(atomContent))
+			_, _ = w.Write([]byte(atomContent))
 		}))
 		defer server.Close()
 
@@ -205,7 +205,7 @@ func TestFetch(t *testing.T) {
 
 	t.Run("handles invalid feed data", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("This is not valid XML"))
+			_, _ = w.Write([]byte("This is not valid XML"))
 		}))
 		defer server.Close()
 
@@ -242,7 +242,7 @@ func TestFetch(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/rss+xml")
-			w.Write([]byte(rssContent))
+			_, _ = w.Write([]byte(rssContent))
 		}))
 		defer server.Close()
 

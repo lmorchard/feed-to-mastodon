@@ -9,15 +9,15 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	FeedURL              string
-	MastodonServer       string
-	MastodonAccessToken  string
-	TemplateFile         string
-	DatabasePath         string
-	CharacterLimit       int
-	MaxItems             int
-	PostVisibility       string
-	ContentWarning       string
+	FeedURL             string
+	MastodonServer      string
+	MastodonAccessToken string
+	TemplateFile        string
+	DatabasePath        string
+	CharacterLimit      int
+	MaxItems            int
+	PostVisibility      string
+	ContentWarning      string
 }
 
 // LoadConfig loads configuration from file and environment variables.

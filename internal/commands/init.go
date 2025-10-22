@@ -32,7 +32,7 @@ func NewInitCmd() *cobra.Command {
 
 func runInit(cmd *cobra.Command, args []string) error {
 	// Ensure directory exists
-	if err := os.MkdirAll(initDirectory, 0755); err != nil {
+	if err := os.MkdirAll(initDirectory, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -124,12 +124,12 @@ post_visibility: "public"
 posts_per_run: 0
 `
 
-	return os.WriteFile(path, []byte(defaultConfig), 0644)
+	return os.WriteFile(path, []byte(defaultConfig), 0o644)
 }
 
 func createDefaultTemplate(path string) error {
 	defaultTemplate := template.GetDefaultTemplate()
-	return os.WriteFile(path, []byte(defaultTemplate), 0644)
+	return os.WriteFile(path, []byte(defaultTemplate), 0o644)
 }
 
 // GetInitDirectory returns the init directory flag value (used for testing).

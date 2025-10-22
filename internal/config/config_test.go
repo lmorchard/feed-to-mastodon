@@ -60,14 +60,23 @@ post_visibility: unlisted
 content_warning: CW Test
 `
 		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
 			t.Fatalf("Failed to create test config: %v", err)
 		}
 
 		// Change to temp directory and create config there
-		oldWd, _ := os.Getwd()
-		defer os.Chdir(oldWd)
-		os.Chdir(tmpDir)
+		oldWd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("os.Getwd() error = %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(oldWd); err != nil {
+				t.Errorf("os.Chdir() error = %v", err)
+			}
+		}()
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatalf("os.Chdir() error = %v", err)
+		}
 
 		cfg, err := LoadConfig("")
 		if err != nil {
@@ -111,14 +120,23 @@ mastodon_server: https://mastodon.example
 mastodon_token: test-token
 `
 		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
 			t.Fatalf("Failed to create test config: %v", err)
 		}
 
 		// Change to temp directory
-		oldWd, _ := os.Getwd()
-		defer os.Chdir(oldWd)
-		os.Chdir(tmpDir)
+		oldWd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("os.Getwd() error = %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(oldWd); err != nil {
+				t.Errorf("os.Chdir() error = %v", err)
+			}
+		}()
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatalf("os.Chdir() error = %v", err)
+		}
 
 		cfg, err := LoadConfig("")
 		if err != nil {

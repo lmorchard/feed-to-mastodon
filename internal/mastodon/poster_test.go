@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 		}
 
 		if poster == nil {
-			t.Error("Expected non-nil poster")
+			t.Fatal("Expected non-nil poster")
 		}
 		if poster.visibility != "public" {
 			t.Errorf("visibility = %s, want public", poster.visibility)
@@ -138,8 +138,13 @@ func TestPostEntries(t *testing.T) {
 		}
 
 		for i, item := range items {
-			itemJSON, _ := json.Marshal(item)
-			db.SaveEntry(fmt.Sprintf("entry-%d", i+1), itemJSON)
+			itemJSON, err := json.Marshal(item)
+			if err != nil {
+				t.Fatalf("json.Marshal() error = %v", err)
+			}
+			if err := db.SaveEntry(fmt.Sprintf("entry-%d", i+1), itemJSON); err != nil {
+				t.Fatalf("SaveEntry() error = %v", err)
+			}
 		}
 
 		entries, err := db.GetUnpostedEntries(0)
@@ -150,7 +155,7 @@ func TestPostEntries(t *testing.T) {
 		// Create template
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err = os.WriteFile(tmplPath, []byte("{{.Item.Title}}\n{{.Item.Link}}"), 0644)
+		err = os.WriteFile(tmplPath, []byte("{{.Item.Title}}\n{{.Item.Link}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create template: %v", err)
 		}
@@ -180,7 +185,7 @@ func TestPostEntries(t *testing.T) {
 	t.Run("handles empty entries list", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create template: %v", err)
 		}
@@ -215,11 +220,18 @@ func TestPostEntries(t *testing.T) {
 
 		// Add valid entry
 		item := &gofeed.Item{Title: "Valid Entry"}
-		itemJSON, _ := json.Marshal(item)
-		db.SaveEntry("valid", itemJSON)
+		itemJSON, err := json.Marshal(item)
+		if err != nil {
+			t.Fatalf("json.Marshal() error = %v", err)
+		}
+		if err := db.SaveEntry("valid", itemJSON); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		// Add invalid JSON entry
-		db.SaveEntry("invalid", []byte("invalid json"))
+		if err := db.SaveEntry("invalid", []byte("invalid json")); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		entries, err := db.GetUnpostedEntries(0)
 		if err != nil {
@@ -229,7 +241,7 @@ func TestPostEntries(t *testing.T) {
 		// Create template
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err = os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err = os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create template: %v", err)
 		}

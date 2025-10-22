@@ -98,7 +98,7 @@ func TestNew(t *testing.T) {
 	t.Run("loads valid template file", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -109,7 +109,7 @@ func TestNew(t *testing.T) {
 		}
 
 		if renderer == nil {
-			t.Error("Expected non-nil renderer")
+			t.Fatal("Expected non-nil renderer")
 		}
 		if renderer.characterLimit != 500 {
 			t.Errorf("characterLimit = %d, want 500", renderer.characterLimit)
@@ -126,7 +126,7 @@ func TestNew(t *testing.T) {
 	t.Run("invalid template syntax error", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Invalid{{}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Invalid{{}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -141,7 +141,7 @@ func TestNew(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
 		// Template using truncate function
-		err := os.WriteFile(tmplPath, []byte(`{{.Item.Title | truncate 10}}`), 0644)
+		err := os.WriteFile(tmplPath, []byte(`{{.Item.Title | truncate 10}}`), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -161,7 +161,7 @@ func TestRender(t *testing.T) {
 	t.Run("renders simple template", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -190,7 +190,7 @@ func TestRender(t *testing.T) {
 		tmplContent := `Title: {{.Item.Title}}
 Link: {{.Item.Link}}
 Description: {{.Item.Description}}`
-		err := os.WriteFile(tmplPath, []byte(tmplContent), 0644)
+		err := os.WriteFile(tmplPath, []byte(tmplContent), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -223,7 +223,7 @@ Description: Test Description`
 	t.Run("renders with minimal item fields", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -253,7 +253,7 @@ Description: Test Description`
 	t.Run("invalid JSON error", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Title}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -272,7 +272,7 @@ Description: Test Description`
 	t.Run("character limit warning", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte("{{.Item.Description}}"), 0644)
+		err := os.WriteFile(tmplPath, []byte("{{.Item.Description}}"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -311,7 +311,7 @@ func TestGetDefaultTemplate(t *testing.T) {
 	t.Run("returned template is valid", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmplPath := filepath.Join(tmpDir, "template.txt")
-		err := os.WriteFile(tmplPath, []byte(GetDefaultTemplate()), 0644)
+		err := os.WriteFile(tmplPath, []byte(GetDefaultTemplate()), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to write default template: %v", err)
 		}
@@ -331,7 +331,7 @@ func TestIntegration(t *testing.T) {
 		tmplContent := `{{.Item.Title}}
 {{.Item.Link}}
 {{if .Item.Description}}{{.Item.Description}}{{end}}`
-		err := os.WriteFile(tmplPath, []byte(tmplContent), 0644)
+		err := os.WriteFile(tmplPath, []byte(tmplContent), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}
@@ -371,7 +371,7 @@ func TestIntegration(t *testing.T) {
 		tmplContent := `{{.Item.Title}}
 {{if .Item.Author}}By: {{.Item.Author.Name}}{{end}}
 {{.Item.Link}}`
-		err := os.WriteFile(tmplPath, []byte(tmplContent), 0644)
+		err := os.WriteFile(tmplPath, []byte(tmplContent), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test template: %v", err)
 		}

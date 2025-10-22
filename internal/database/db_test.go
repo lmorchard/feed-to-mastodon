@@ -185,11 +185,17 @@ func TestGetUnpostedEntries(t *testing.T) {
 		defer db.Close()
 
 		// Add unposted entry
-		db.SaveEntry("unposted-1", []byte(`{"title": "Unposted"}`))
+		if err := db.SaveEntry("unposted-1", []byte(`{"title": "Unposted"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		// Add posted entry
-		db.SaveEntry("posted-1", []byte(`{"title": "Posted"}`))
-		db.MarkAsPosted("posted-1")
+		if err := db.SaveEntry("posted-1", []byte(`{"title": "Posted"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.MarkAsPosted("posted-1"); err != nil {
+			t.Fatalf("MarkAsPosted() error = %v", err)
+		}
 
 		// Get unposted
 		entries, err := db.GetUnpostedEntries(0)
@@ -213,9 +219,15 @@ func TestGetUnpostedEntries(t *testing.T) {
 		defer db.Close()
 
 		// Add entries in specific order
-		db.SaveEntry("entry-1", []byte(`{"title": "First"}`))
-		db.SaveEntry("entry-2", []byte(`{"title": "Second"}`))
-		db.SaveEntry("entry-3", []byte(`{"title": "Third"}`))
+		if err := db.SaveEntry("entry-1", []byte(`{"title": "First"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-2", []byte(`{"title": "Second"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-3", []byte(`{"title": "Third"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		entries, err := db.GetUnpostedEntries(0)
 		if err != nil {
@@ -247,7 +259,9 @@ func TestGetUnpostedEntries(t *testing.T) {
 
 		// Add 5 entries
 		for i := 1; i <= 5; i++ {
-			db.SaveEntry("entry-"+string(rune('0'+i)), []byte(`{"title": "Entry"}`))
+			if err := db.SaveEntry("entry-"+string(rune('0'+i)), []byte(`{"title": "Entry"}`)); err != nil {
+				t.Fatalf("SaveEntry() error = %v", err)
+			}
 		}
 
 		// Get only 2
@@ -290,7 +304,9 @@ func TestMarkAsPosted(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("test-id", []byte(`{"title": "Test"}`))
+		if err := db.SaveEntry("test-id", []byte(`{"title": "Test"}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		err = db.MarkAsPosted("test-id")
 		if err != nil {
@@ -347,9 +363,15 @@ func TestGetStats(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("entry-1", []byte(`{}`))
-		db.SaveEntry("entry-2", []byte(`{}`))
-		db.SaveEntry("entry-3", []byte(`{}`))
+		if err := db.SaveEntry("entry-1", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-2", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-3", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		total, posted, unposted, err := db.GetStats()
 		if err != nil {
@@ -368,12 +390,22 @@ func TestGetStats(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("entry-1", []byte(`{}`))
-		db.SaveEntry("entry-2", []byte(`{}`))
-		db.SaveEntry("entry-3", []byte(`{}`))
+		if err := db.SaveEntry("entry-1", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-2", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-3", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
-		db.MarkAsPosted("entry-1")
-		db.MarkAsPosted("entry-2")
+		if err := db.MarkAsPosted("entry-1"); err != nil {
+			t.Fatalf("MarkAsPosted() error = %v", err)
+		}
+		if err := db.MarkAsPosted("entry-2"); err != nil {
+			t.Fatalf("MarkAsPosted() error = %v", err)
+		}
 
 		total, posted, unposted, err := db.GetStats()
 		if err != nil {
@@ -411,8 +443,12 @@ func TestGetLastFetchTime(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("entry-1", []byte(`{}`))
-		db.SaveEntry("entry-2", []byte(`{}`))
+		if err := db.SaveEntry("entry-1", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.SaveEntry("entry-2", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		fetchTime, err := db.GetLastFetchTime()
 		if err != nil {
@@ -450,7 +486,9 @@ func TestGetLastPostTime(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("entry-1", []byte(`{}`))
+		if err := db.SaveEntry("entry-1", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
 
 		postTime, err := db.GetLastPostTime()
 		if err != nil {
@@ -469,8 +507,12 @@ func TestGetLastPostTime(t *testing.T) {
 		}
 		defer db.Close()
 
-		db.SaveEntry("entry-1", []byte(`{}`))
-		db.MarkAsPosted("entry-1")
+		if err := db.SaveEntry("entry-1", []byte(`{}`)); err != nil {
+			t.Fatalf("SaveEntry() error = %v", err)
+		}
+		if err := db.MarkAsPosted("entry-1"); err != nil {
+			t.Fatalf("MarkAsPosted() error = %v", err)
+		}
 
 		postTime, err := db.GetLastPostTime()
 		if err != nil {
