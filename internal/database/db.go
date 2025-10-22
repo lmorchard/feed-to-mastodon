@@ -212,3 +212,57 @@ func (db *DB) GetSetting(key string) (*string, error) {
 
 	return &value, nil
 }
+
+// GetAllEntryIDs returns all entry IDs currently in the database.
+func (db *DB) GetAllEntryIDs() ([]string, error) {
+	rows, err := db.conn.Query("SELECT id FROM entries")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query entry IDs: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]string, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan entry ID: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating entry IDs: %w", err)
+	}
+
+	return ids, nil
+}
+
+// DeleteEntries deletes entries by their IDs.
+// Returns the number of entries deleted.
+func (db *DB) DeleteEntries(ids []string) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	deleted := 0
+	for _, id := range ids {
+		result, err := db.conn.Exec("DELETE FROM entries WHERE id = ?", id)
+		if err != nil {
+			logrus.Errorf("Failed to delete entry %s: %v", id, err)
+			continue
+		}
+
+		rows, err := result.RowsAffected()
+		if err != nil {
+			logrus.Errorf("Failed to get rows affected for entry %s: %v", id, err)
+			continue
+		}
+
+		if rows > 0 {
+			deleted++
+			logrus.Debugf("Deleted entry: %s", id)
+		}
+	}
+
+	return deleted, nil
+}

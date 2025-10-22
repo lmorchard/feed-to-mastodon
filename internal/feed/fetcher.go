@@ -94,3 +94,62 @@ func (f *Fetcher) SaveEntriesToDB(feed *gofeed.Feed, db *database.DB) (int, erro
 	logrus.Infof("Saved %d/%d entries to database", savedCount, len(feed.Items))
 	return savedCount, nil
 }
+
+// StoreFeedMetadata stores feed metadata in the database for use in templates.
+func (f *Fetcher) StoreFeedMetadata(feed *gofeed.Feed, db *database.DB) error {
+	feedJSON, err := json.Marshal(feed)
+	if err != nil {
+		return fmt.Errorf("failed to marshal feed data: %w", err)
+	}
+
+	if err := db.SetSetting("feed_metadata", string(feedJSON)); err != nil {
+		return fmt.Errorf("failed to store feed metadata: %w", err)
+	}
+
+	logrus.Debug("Stored feed metadata")
+	return nil
+}
+
+// PurgeStaleEntries removes entries from the database that are no longer in the feed.
+// Returns the number of entries purged.
+func (f *Fetcher) PurgeStaleEntries(feed *gofeed.Feed, db *database.DB) (int, error) {
+	if feed == nil {
+		return 0, fmt.Errorf("feed is nil")
+	}
+
+	// Collect IDs from current feed
+	feedIDs := make(map[string]bool)
+	for _, item := range feed.Items {
+		id := GenerateEntryID(item)
+		feedIDs[id] = true
+	}
+
+	// Get all IDs from database
+	dbIDs, err := db.GetAllEntryIDs()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get database entry IDs: %w", err)
+	}
+
+	// Find IDs that are in DB but not in feed
+	toPurge := make([]string, 0)
+	for _, dbID := range dbIDs {
+		if !feedIDs[dbID] {
+			toPurge = append(toPurge, dbID)
+		}
+	}
+
+	// Delete entries no longer in feed
+	if len(toPurge) == 0 {
+		logrus.Debug("No stale entries to purge")
+		return 0, nil
+	}
+
+	logrus.Infof("Purging %d entries no longer in feed", len(toPurge))
+	purged, err := db.DeleteEntries(toPurge)
+	if err != nil {
+		return purged, fmt.Errorf("error during purge: %w", err)
+	}
+
+	logrus.Infof("Purged %d entries", purged)
+	return purged, nil
+}

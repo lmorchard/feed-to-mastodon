@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -388,6 +389,310 @@ func TestSaveEntriesToDB(t *testing.T) {
 
 		if count != 0 {
 			t.Errorf("Expected 0 entries saved for nil feed, got %d", count)
+		}
+	})
+}
+
+func TestStoreFeedMetadata(t *testing.T) {
+	t.Run("stores feed metadata successfully", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		feed := &gofeed.Feed{
+			Title:       "Test Feed",
+			Description: "Test Description",
+			Link:        "https://example.com",
+		}
+
+		fetcher := New()
+		err = fetcher.StoreFeedMetadata(feed, db)
+		if err != nil {
+			t.Fatalf("StoreFeedMetadata() error = %v", err)
+		}
+
+		// Verify metadata was stored
+		metadata, err := db.GetSetting("feed_metadata")
+		if err != nil {
+			t.Fatalf("GetSetting() error = %v", err)
+		}
+		if metadata == nil {
+			t.Fatal("Expected feed metadata to be stored")
+		}
+		if *metadata == "" {
+			t.Error("Feed metadata is empty")
+		}
+	})
+
+	t.Run("overwrites existing metadata", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		feed1 := &gofeed.Feed{Title: "Feed 1"}
+		feed2 := &gofeed.Feed{Title: "Feed 2"}
+
+		fetcher := New()
+
+		// Store first feed
+		err = fetcher.StoreFeedMetadata(feed1, db)
+		if err != nil {
+			t.Fatalf("StoreFeedMetadata() error = %v", err)
+		}
+
+		// Store second feed
+		err = fetcher.StoreFeedMetadata(feed2, db)
+		if err != nil {
+			t.Fatalf("StoreFeedMetadata() error = %v", err)
+		}
+
+		// Verify latest metadata is stored
+		metadata, err := db.GetSetting("feed_metadata")
+		if err != nil {
+			t.Fatalf("GetSetting() error = %v", err)
+		}
+		if metadata == nil || *metadata == "" {
+			t.Fatal("Expected feed metadata to be stored")
+		}
+
+		// Unmarshal and verify it contains the latest feed
+		var feed gofeed.Feed
+		err = json.Unmarshal([]byte(*metadata), &feed)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal feed metadata: %v", err)
+		}
+		if feed.Title != "Feed 2" {
+			t.Errorf("Expected feed title 'Feed 2', got '%s'", feed.Title)
+		}
+	})
+}
+
+func TestPurgeStaleEntries(t *testing.T) {
+	t.Run("purges entries not in feed", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		// Save initial entries
+		initialFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"},
+				{GUID: "item-2", Title: "Item 2"},
+				{GUID: "item-3", Title: "Item 3"},
+			},
+		}
+		_, err = fetcher.SaveEntriesToDB(initialFeed, db)
+		if err != nil {
+			t.Fatalf("SaveEntriesToDB() error = %v", err)
+		}
+
+		// New feed with only 2 items
+		newFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"},
+				{GUID: "item-2", Title: "Item 2"},
+			},
+		}
+
+		// Purge stale entries
+		purged, err := fetcher.PurgeStaleEntries(newFeed, db)
+		if err != nil {
+			t.Fatalf("PurgeStaleEntries() error = %v", err)
+		}
+
+		if purged != 1 {
+			t.Errorf("Expected 1 entry purged, got %d", purged)
+		}
+
+		// Verify database now has only 2 entries
+		total, _, _, err := db.GetStats()
+		if err != nil {
+			t.Fatalf("GetStats() error = %v", err)
+		}
+		if total != 2 {
+			t.Errorf("Expected 2 entries in database, got %d", total)
+		}
+	})
+
+	t.Run("purges nothing when all entries still in feed", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		feed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"},
+				{GUID: "item-2", Title: "Item 2"},
+			},
+		}
+
+		// Save entries
+		_, err = fetcher.SaveEntriesToDB(feed, db)
+		if err != nil {
+			t.Fatalf("SaveEntriesToDB() error = %v", err)
+		}
+
+		// Purge with same feed
+		purged, err := fetcher.PurgeStaleEntries(feed, db)
+		if err != nil {
+			t.Fatalf("PurgeStaleEntries() error = %v", err)
+		}
+
+		if purged != 0 {
+			t.Errorf("Expected 0 entries purged, got %d", purged)
+		}
+	})
+
+	t.Run("purges all entries when feed is empty", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		// Save initial entries
+		initialFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"},
+				{GUID: "item-2", Title: "Item 2"},
+			},
+		}
+		_, err = fetcher.SaveEntriesToDB(initialFeed, db)
+		if err != nil {
+			t.Fatalf("SaveEntriesToDB() error = %v", err)
+		}
+
+		// Empty feed
+		emptyFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{},
+		}
+
+		// Purge stale entries
+		purged, err := fetcher.PurgeStaleEntries(emptyFeed, db)
+		if err != nil {
+			t.Fatalf("PurgeStaleEntries() error = %v", err)
+		}
+
+		if purged != 2 {
+			t.Errorf("Expected 2 entries purged, got %d", purged)
+		}
+
+		// Verify database is empty
+		total, _, _, err := db.GetStats()
+		if err != nil {
+			t.Fatalf("GetStats() error = %v", err)
+		}
+		if total != 0 {
+			t.Errorf("Expected 0 entries in database, got %d", total)
+		}
+	})
+
+	t.Run("handles nil feed", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		_, err = fetcher.PurgeStaleEntries(nil, db)
+		if err == nil {
+			t.Error("Expected error for nil feed, got nil")
+		}
+	})
+
+	t.Run("handles feed with new entries", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		// Save initial entries
+		initialFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"},
+				{GUID: "item-2", Title: "Item 2"},
+			},
+		}
+		_, err = fetcher.SaveEntriesToDB(initialFeed, db)
+		if err != nil {
+			t.Fatalf("SaveEntriesToDB() error = %v", err)
+		}
+
+		// New feed with one old item removed and two new items added
+		newFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{GUID: "item-1", Title: "Item 1"}, // kept
+				{GUID: "item-3", Title: "Item 3"}, // new
+				{GUID: "item-4", Title: "Item 4"}, // new
+			},
+		}
+
+		// Purge stale entries
+		purged, err := fetcher.PurgeStaleEntries(newFeed, db)
+		if err != nil {
+			t.Fatalf("PurgeStaleEntries() error = %v", err)
+		}
+
+		if purged != 1 {
+			t.Errorf("Expected 1 entry purged (item-2), got %d", purged)
+		}
+	})
+
+	t.Run("uses GenerateEntryID for items without GUID", func(t *testing.T) {
+		db, err := database.New(":memory:")
+		if err != nil {
+			t.Fatalf("Failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		fetcher := New()
+
+		// Save entries without GUIDs
+		initialFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{Title: "Item 1", Link: "https://example.com/1"},
+				{Title: "Item 2", Link: "https://example.com/2"},
+			},
+		}
+		_, err = fetcher.SaveEntriesToDB(initialFeed, db)
+		if err != nil {
+			t.Fatalf("SaveEntriesToDB() error = %v", err)
+		}
+
+		// New feed with only one item
+		newFeed := &gofeed.Feed{
+			Items: []*gofeed.Item{
+				{Title: "Item 1", Link: "https://example.com/1"},
+			},
+		}
+
+		// Purge stale entries
+		purged, err := fetcher.PurgeStaleEntries(newFeed, db)
+		if err != nil {
+			t.Fatalf("PurgeStaleEntries() error = %v", err)
+		}
+
+		if purged != 1 {
+			t.Errorf("Expected 1 entry purged, got %d", purged)
 		}
 	})
 }

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/lorchard/feed-to-mastodon/internal/config"
@@ -11,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var noPurge bool
+
 // NewFetchCmd creates the fetch command.
 func NewFetchCmd() *cobra.Command {
 	fetchCmd := &cobra.Command{
@@ -18,9 +19,14 @@ func NewFetchCmd() *cobra.Command {
 		Short: "Fetch feed entries and save them to the database",
 		Long: `Fetch retrieves entries from the configured RSS/Atom feed and saves
 them to the database. Entries that already exist (based on their ID)
-are skipped automatically.`,
+are skipped automatically.
+
+By default, entries that are no longer in the feed are purged from the
+database to clean up old entries over time.`,
 		RunE: runFetch,
 	}
+
+	fetchCmd.Flags().BoolVar(&noPurge, "no-purge", false, "skip purging entries that are no longer in the feed")
 
 	return fetchCmd
 }
@@ -70,12 +76,16 @@ func runFetch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Store feed metadata for use in templates
-	feedJSON, err := json.Marshal(feedData)
-	if err != nil {
-		logrus.Warnf("Failed to marshal feed data: %v", err)
-	} else {
-		if err := db.SetSetting("feed_metadata", string(feedJSON)); err != nil {
-			logrus.Warnf("Failed to store feed metadata: %v", err)
+	if err := fetcher.StoreFeedMetadata(feedData, db); err != nil {
+		logrus.Warnf("Failed to store feed metadata: %v", err)
+	}
+
+	// Purge entries no longer in feed (unless --no-purge is set)
+	var purged int
+	if !noPurge {
+		purged, err = fetcher.PurgeStaleEntries(feedData, db)
+		if err != nil {
+			logrus.Warnf("Failed to purge stale entries: %v", err)
 		}
 	}
 
@@ -86,14 +96,25 @@ func runFetch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Calculate and display results
-	newEntries := totalAfter - totalBefore
+	newEntries := totalAfter - totalBefore + purged
 	logrus.Infof("Saved %d new entries (skipped %d duplicates)", saved, len(feedData.Items)-saved)
+	if purged > 0 {
+		logrus.Infof("Purged %d entries no longer in feed", purged)
+	}
 	logrus.Infof("Database totals: %d total, %d posted, %d unposted",
 		totalAfter, postedAfter, unpostedAfter)
 
-	if newEntries > 0 {
-		fmt.Printf("\nFetched %d new entries\n", newEntries)
-		fmt.Printf("Run 'feed-to-mastodon status' to see what will be posted\n")
+	if newEntries > 0 || purged > 0 {
+		fmt.Println()
+		if newEntries > 0 {
+			fmt.Printf("Fetched %d new entries\n", newEntries)
+		}
+		if purged > 0 {
+			fmt.Printf("Purged %d old entries\n", purged)
+		}
+		if newEntries > 0 {
+			fmt.Printf("Run 'feed-to-mastodon status' to see what will be posted\n")
+		}
 	} else {
 		fmt.Println("\nNo new entries found")
 	}
