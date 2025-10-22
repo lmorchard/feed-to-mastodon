@@ -28,7 +28,7 @@ _testmain.go
 # Goland specific files
 .idea
 
-feed-to-mastodon
+/feed-to-mastodon
 data
 
 # SQLite database files
