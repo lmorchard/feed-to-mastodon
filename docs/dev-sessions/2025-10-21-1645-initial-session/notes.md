@@ -44,3 +44,41 @@
 - Tests for migrations and schema initialization
 - Tests for entry CRUD operations
 - All tests passing (using in-memory SQLite for speed)
+
+### Phase 3: Core Business Logic
+
+#### Step 5: Feed Fetching (Completed)
+- Implemented feed parser with gofeed
+- Generate entry IDs from GUID or SHA hash
+- Save entries to database with JSON serialization
+
+#### Step 5.5: Feed Fetching Unit Tests (Completed)
+- Comprehensive tests for ID generation
+- Tests for RSS and Atom feed parsing
+- Tests for error handling
+- All tests passing
+
+#### Step 6: Template Rendering (Completed)
+- Implemented template renderer with html/template
+- Custom truncate function for UTF-8 strings
+- Character limit validation
+- Default template provided
+
+#### Step 6.5: Template Rendering Unit Tests (Completed)
+- Extensive truncate function tests including UTF-8 and emoji
+- Template loading and parsing tests
+- Rendering tests with various item types
+- All tests passing
+
+#### Step 7: Mastodon Posting (Completed)
+- Implemented Mastodon client integration
+- Support for visibility settings and content warnings
+- Dry-run mode for testing
+- Batch posting with error continuation
+
+#### Step 7.5: Mastodon Posting Unit Tests (Completed)
+- Tests for validation and configuration
+- Comprehensive dry-run tests
+- Batch posting tests
+- Error handling tests
+- All tests passing
