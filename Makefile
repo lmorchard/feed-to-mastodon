@@ -6,7 +6,12 @@ DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 build:
 	@echo "Building for $(shell go env GOOS)/$(shell go env GOARCH)"
-	go build -o feed-to-mastodon ./cmd/feed-to-mastodon
+	@if [ "$(shell go env GOOS)" = "linux" ]; then \
+		echo "Using static linking for Linux build"; \
+		go build -ldflags "-linkmode external -extldflags '-static'" -o feed-to-mastodon ./cmd/feed-to-mastodon; \
+	else \
+		go build -o feed-to-mastodon ./cmd/feed-to-mastodon; \
+	fi
 
 test:
 	go test ./internal/...
