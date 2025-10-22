@@ -38,6 +38,9 @@ using customizable templates.`,
 	rootCmd.AddCommand(NewFetchCmd())
 	rootCmd.AddCommand(NewStatusCmd())
 	rootCmd.AddCommand(NewPostCmd())
+	rootCmd.AddCommand(NewCatchupCmd())
+	rootCmd.AddCommand(NewLinkCmd())
+	rootCmd.AddCommand(NewCodeCmd())
 
 	return rootCmd
 }

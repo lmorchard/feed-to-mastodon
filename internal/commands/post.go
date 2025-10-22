@@ -38,17 +38,23 @@ func runPost(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("invalid config: %w", err)
-	}
-
 	// Open database
 	db, err := database.New(cfg.DatabasePath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
+
+	// Get access token from config or database
+	accessToken, err := getAccessToken(cfg, db)
+	if err != nil {
+		return fmt.Errorf("authentication required: %w", err)
+	}
+
+	// Validate configuration (but don't require access token since we got it from DB)
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
 
 	// Get unposted entries
 	limit := cfg.MaxItems
@@ -74,7 +80,7 @@ func runPost(cmd *cobra.Command, args []string) error {
 	// Create Mastodon poster
 	poster, err := mastodon.New(
 		cfg.MastodonServer,
-		cfg.MastodonAccessToken,
+		accessToken,
 		cfg.PostVisibility,
 		cfg.ContentWarning,
 	)

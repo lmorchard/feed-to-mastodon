@@ -539,9 +539,9 @@ func TestMigrations(t *testing.T) {
 			t.Fatalf("GetMigrationVersion() error = %v", err)
 		}
 
-		// Version should be 1 for the initial schema
-		if version != 1 {
-			t.Errorf("Expected version 1, got %d", version)
+		// Version should be 2 (initial schema + settings table migration)
+		if version != 2 {
+			t.Errorf("Expected version 2, got %d", version)
 		}
 	})
 

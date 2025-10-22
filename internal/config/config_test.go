@@ -196,14 +196,13 @@ func TestValidate(t *testing.T) {
 			errMsg:  "mastodonServer is required",
 		},
 		{
-			name: "missing access token",
+			name: "missing access token - basic validation passes",
 			config: Config{
 				FeedURL:        "https://example.com/feed",
 				MastodonServer: "https://mastodon.social",
 				PostVisibility: "public",
 			},
-			wantErr: true,
-			errMsg:  "mastodonAccessToken is required",
+			wantErr: false,
 		},
 		{
 			name: "invalid visibility",
@@ -268,6 +267,84 @@ func TestValidate(t *testing.T) {
 			if tt.wantErr && tt.errMsg != "" {
 				if err == nil || !contains(err.Error(), tt.errMsg) {
 					t.Errorf("Validate() error = %v, want error containing %v", err, tt.errMsg)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateForPosting(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  Config
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "missing both access token and client credentials",
+			config: Config{
+				FeedURL:        "https://example.com/feed",
+				MastodonServer: "https://mastodon.social",
+				PostVisibility: "public",
+			},
+			wantErr: true,
+			errMsg:  "either mastodon_token or both mastodon_client_id and mastodon_client_secret are required",
+		},
+		{
+			name: "has access token",
+			config: Config{
+				FeedURL:             "https://example.com/feed",
+				MastodonServer:      "https://mastodon.social",
+				MastodonAccessToken: "token",
+				PostVisibility:      "public",
+			},
+			wantErr: false,
+		},
+		{
+			name: "has both client credentials",
+			config: Config{
+				FeedURL:              "https://example.com/feed",
+				MastodonServer:       "https://mastodon.social",
+				MastodonClientID:     "client_id",
+				MastodonClientSecret: "client_secret",
+				PostVisibility:       "public",
+			},
+			wantErr: false,
+		},
+		{
+			name: "has only client ID",
+			config: Config{
+				FeedURL:          "https://example.com/feed",
+				MastodonServer:   "https://mastodon.social",
+				MastodonClientID: "client_id",
+				PostVisibility:   "public",
+			},
+			wantErr: true,
+			errMsg:  "either mastodon_token or both mastodon_client_id and mastodon_client_secret are required",
+		},
+		{
+			name: "has only client secret",
+			config: Config{
+				FeedURL:              "https://example.com/feed",
+				MastodonServer:       "https://mastodon.social",
+				MastodonClientSecret: "client_secret",
+				PostVisibility:       "public",
+			},
+			wantErr: true,
+			errMsg:  "either mastodon_token or both mastodon_client_id and mastodon_client_secret are required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.ValidateForPosting()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateForPosting() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && tt.errMsg != "" {
+				if err == nil || !contains(err.Error(), tt.errMsg) {
+					t.Errorf("ValidateForPosting() error = %v, want error containing %v", err, tt.errMsg)
 				}
 			}
 		})

@@ -9,15 +9,17 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	FeedURL             string
-	MastodonServer      string
-	MastodonAccessToken string
-	TemplateFile        string
-	DatabasePath        string
-	CharacterLimit      int
-	MaxItems            int
-	PostVisibility      string
-	ContentWarning      string
+	FeedURL              string
+	MastodonServer       string
+	MastodonAccessToken  string
+	MastodonClientID     string
+	MastodonClientSecret string
+	TemplateFile         string
+	DatabasePath         string
+	CharacterLimit       int
+	MaxItems             int
+	PostVisibility       string
+	ContentWarning       string
 }
 
 // LoadConfig loads configuration from file and environment variables.
@@ -58,15 +60,17 @@ func LoadConfig(configFile string) (*Config, error) {
 
 	// Unmarshal into Config struct
 	cfg := &Config{
-		FeedURL:             viper.GetString("feed_url"),
-		MastodonServer:      viper.GetString("mastodon_server"),
-		MastodonAccessToken: viper.GetString("mastodon_token"),
-		TemplateFile:        viper.GetString("template_path"),
-		DatabasePath:        viper.GetString("database_path"),
-		CharacterLimit:      viper.GetInt("character_limit"),
-		MaxItems:            viper.GetInt("posts_per_run"),
-		PostVisibility:      viper.GetString("post_visibility"),
-		ContentWarning:      viper.GetString("content_warning"),
+		FeedURL:              viper.GetString("feed_url"),
+		MastodonServer:       viper.GetString("mastodon_server"),
+		MastodonAccessToken:  viper.GetString("mastodon_token"),
+		MastodonClientID:     viper.GetString("mastodon_client_id"),
+		MastodonClientSecret: viper.GetString("mastodon_client_secret"),
+		TemplateFile:         viper.GetString("template_path"),
+		DatabasePath:         viper.GetString("database_path"),
+		CharacterLimit:       viper.GetInt("character_limit"),
+		MaxItems:             viper.GetInt("posts_per_run"),
+		PostVisibility:       viper.GetString("post_visibility"),
+		ContentWarning:       viper.GetString("content_warning"),
 	}
 
 	return cfg, nil
@@ -82,10 +86,6 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("mastodonServer is required")
 	}
 
-	if c.MastodonAccessToken == "" {
-		return fmt.Errorf("mastodonAccessToken is required")
-	}
-
 	// Validate post visibility
 	validVisibilities := map[string]bool{
 		"public":   true,
@@ -96,6 +96,23 @@ func (c *Config) Validate() error {
 
 	if !validVisibilities[c.PostVisibility] {
 		return fmt.Errorf("postVisibility must be one of: public, unlisted, private, direct")
+	}
+
+	return nil
+}
+
+// ValidateForPosting checks that we have authentication configured for posting
+func (c *Config) ValidateForPosting() error {
+	if err := c.Validate(); err != nil {
+		return err
+	}
+
+	// Must have either an access token OR client credentials
+	hasAccessToken := c.MastodonAccessToken != ""
+	hasClientCreds := c.MastodonClientID != "" && c.MastodonClientSecret != ""
+
+	if !hasAccessToken && !hasClientCreds {
+		return fmt.Errorf("either mastodon_token or both mastodon_client_id and mastodon_client_secret are required")
 	}
 
 	return nil

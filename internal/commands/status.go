@@ -1,11 +1,13 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/lorchard/feed-to-mastodon/internal/config"
 	"github.com/lorchard/feed-to-mastodon/internal/database"
+	mastodon "github.com/mattn/go-mastodon"
 	"github.com/mmcdole/gofeed"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -61,7 +63,28 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Println("Feed to Mastodon Status")
 	fmt.Println("=======================")
 	fmt.Printf("Feed URL: %s\n", cfg.FeedURL)
-	fmt.Printf("Database: %s\n\n", cfg.DatabasePath)
+	fmt.Printf("Database: %s\n", cfg.DatabasePath)
+
+	// Try to show Mastodon account info
+	accessToken, err := getAccessToken(cfg, db)
+	if err != nil {
+		fmt.Printf("Mastodon Account: Not authenticated (%v)\n\n", err)
+	} else {
+		// Create Mastodon client
+		client := mastodon.NewClient(&mastodon.Config{
+			Server:      cfg.MastodonServer,
+			AccessToken: accessToken,
+		})
+
+		// Get account info
+		account, err := client.GetAccountCurrentUser(context.Background())
+		if err != nil {
+			fmt.Printf("Mastodon Account: Authentication error (%v)\n\n", err)
+		} else {
+			fmt.Printf("Mastodon Account: @%s@%s\n", account.Username, cfg.MastodonServer)
+			fmt.Printf("Display Name: %s\n\n", account.DisplayName)
+		}
+	}
 
 	fmt.Printf("Total entries: %d\n", total)
 	fmt.Printf("Posted entries: %d\n", posted)

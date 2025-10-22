@@ -178,3 +178,37 @@ func (db *DB) GetLastPostTime() (*string, error) {
 
 	return postTime, nil
 }
+
+// SetSetting stores a key-value pair in the settings table.
+func (db *DB) SetSetting(key, value string) error {
+	query := `
+		INSERT INTO settings (key, value, updated_at)
+		VALUES (?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			updated_at = CURRENT_TIMESTAMP
+	`
+
+	_, err := db.conn.Exec(query, key, value)
+	if err != nil {
+		return fmt.Errorf("failed to set setting %s: %w", key, err)
+	}
+
+	logrus.Debugf("Set setting: %s", key)
+	return nil
+}
+
+// GetSetting retrieves a value from the settings table.
+// Returns nil if the key doesn't exist.
+func (db *DB) GetSetting(key string) (*string, error) {
+	var value string
+	err := db.conn.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get setting %s: %w", key, err)
+	}
+
+	return &value, nil
+}

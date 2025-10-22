@@ -97,10 +97,23 @@ feed_url: "https://example.com/feed.xml"
 # REQUIRED: Mastodon server URL
 mastodon_server: "https://mastodon.social"
 
-# REQUIRED: Mastodon access token
+# AUTHENTICATION: Choose one of two methods:
+#
+# Method 1 - Direct Access Token:
 # Create a token at: Settings > Development > New Application
 # Required scopes: write:statuses
-mastodon_token: "your-access-token-here"
+# mastodon_token: "your-access-token-here"
+#
+# Method 2 - OAuth Flow (recommended):
+# 1. Create an application at: Settings > Development > New Application
+# 2. Copy the client ID and client secret below
+# 3. Run: feed-to-mastodon link
+# 4. Visit the URL and authorize
+# 5. Run: feed-to-mastodon code <authorization-code>
+# The access token will be stored in the database automatically.
+#
+# mastodon_client_id: "your-client-id"
+# mastodon_client_secret: "your-client-secret"
 
 # OPTIONAL: Database file path (default: ./feed-to-mastodon.db)
 database_path: "feed-to-mastodon.db"

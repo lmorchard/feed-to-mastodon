@@ -10,9 +10,13 @@ import (
 // Migration 1 is the initial schema, handled by InitSchema.
 func getMigrations() map[int]string {
 	return map[int]string{
-		// Future migrations go here starting at version 2
-		// Example:
-		// 2: `ALTER TABLE entries ADD COLUMN some_field TEXT;`,
+		2: `
+			CREATE TABLE IF NOT EXISTS settings (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}
 }
 
