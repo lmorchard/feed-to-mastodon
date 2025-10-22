@@ -20,21 +20,28 @@ type Config struct {
 	ContentWarning       string
 }
 
-// LoadConfig loads configuration from file and environment variables
-func LoadConfig() (*Config, error) {
+// LoadConfig loads configuration from file and environment variables.
+// If configFile is not empty, it will be used; otherwise default locations are searched.
+func LoadConfig(configFile string) (*Config, error) {
 	// Set defaults
-	viper.SetDefault("templateFile", "template.txt")
+	viper.SetDefault("templateFile", "post-template.txt")
 	viper.SetDefault("databasePath", "feed-to-mastodon.db")
 	viper.SetDefault("characterLimit", 500)
 	viper.SetDefault("maxItems", 0)
 	viper.SetDefault("postVisibility", "public")
 	viper.SetDefault("contentWarning", "")
 
-	// Set config file name and paths
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("$HOME/.config/feed-to-mastodon")
+	// Configure config file
+	if configFile != "" {
+		// Use specified config file
+		viper.SetConfigFile(configFile)
+	} else {
+		// Search for config in default locations
+		viper.SetConfigName("feed-to-mastodon")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(".")
+		viper.AddConfigPath("$HOME/.config/feed-to-mastodon")
+	}
 
 	// Bind environment variables with prefix
 	viper.SetEnvPrefix("FEED_TO_MASTODON")

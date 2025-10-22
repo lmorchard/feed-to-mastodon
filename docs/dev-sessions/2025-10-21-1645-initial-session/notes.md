@@ -82,3 +82,50 @@
 - Batch posting tests
 - Error handling tests
 - All tests passing
+
+### Phase 4: CLI Commands
+
+#### Step 8: Root Command and Logging Setup (Completed)
+- Created internal/commands/root.go with InitRootCmd()
+- Implemented setupLogging() with logrus based on --verbose and --debug flags
+- Added persistent flags: --config, --verbose, --debug
+- Updated cmd/feed-to-mastodon/main.go to use commands.Execute()
+- Verified binary builds and runs successfully
+
+#### Step 9: Init Command (Completed)
+- Created internal/commands/init.go with NewInitCmd()
+- Implemented runInit() to create default config, template, and database
+- Added --directory / -d flag for custom initialization directory
+- Fixed flag conflict by removing shorthand from --debug flag
+- Creates feed-to-mastodon.yaml with comprehensive commented defaults
+- Creates post-template.txt with default template
+- Initializes SQLite database and runs migrations
+- Prints helpful next steps for the user
+- Tested successfully in /tmp/feed-test-2
+
+#### Step 10: Fetch Command (Completed)
+- Created internal/commands/fetch.go with NewFetchCmd()
+- Updated config.LoadConfig() to accept optional configFile parameter
+- Fixed config tests to use new signature and correct file names
+- Implemented runFetch() to load config, fetch feed, and save entries
+- Uses database stats to track new vs duplicate entries
+- Provides feedback on what was fetched and what's next
+- All tests passing
+
+#### Step 11: Status Command (Completed)
+- Created internal/commands/status.go with NewStatusCmd()
+- Implemented runStatus() to display database overview
+- Shows total, posted, and unposted entry counts
+- Displays last fetch time and last post time
+- Previews next 5 entries to be posted with titles and links
+- Provides helpful guidance when database is empty
+
+#### Step 12: Post Command (Completed)
+- Created internal/commands/post.go with NewPostCmd()
+- Added --dry-run flag for testing without posting
+- Implemented runPost() to post unposted entries to Mastodon
+- Respects posts_per_run configuration (MaxItems)
+- Uses template renderer and Mastodon poster
+- Marks entries as posted after successful posting
+- Provides clear feedback for dry-run vs actual posting
+- All CLI commands now complete!

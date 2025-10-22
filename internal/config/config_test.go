@@ -20,14 +20,14 @@ func TestLoadConfig(t *testing.T) {
 		}()
 
 		viper.Reset()
-		cfg, err := LoadConfig()
+		cfg, err := LoadConfig("")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
 
 		// Check defaults
-		if cfg.TemplateFile != "template.txt" {
-			t.Errorf("TemplateFile = %v, want %v", cfg.TemplateFile, "template.txt")
+		if cfg.TemplateFile != "post-template.txt" {
+			t.Errorf("TemplateFile = %v, want %v", cfg.TemplateFile, "post-template.txt")
 		}
 		if cfg.DatabasePath != "feed-to-mastodon.db" {
 			t.Errorf("DatabasePath = %v, want %v", cfg.DatabasePath, "feed-to-mastodon.db")
@@ -59,7 +59,7 @@ maxItems: 5
 postVisibility: unlisted
 contentWarning: CW Test
 `
-		configPath := filepath.Join(tmpDir, "config.yaml")
+		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			t.Fatalf("Failed to create test config: %v", err)
 		}
@@ -69,7 +69,7 @@ contentWarning: CW Test
 		defer os.Chdir(oldWd)
 		os.Chdir(tmpDir)
 
-		cfg, err := LoadConfig()
+		cfg, err := LoadConfig("")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
@@ -110,7 +110,7 @@ contentWarning: CW Test
 mastodonServer: https://mastodon.example
 mastodonAccessToken: test-token
 `
-		configPath := filepath.Join(tmpDir, "config.yaml")
+		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			t.Fatalf("Failed to create test config: %v", err)
 		}
@@ -120,7 +120,7 @@ mastodonAccessToken: test-token
 		defer os.Chdir(oldWd)
 		os.Chdir(tmpDir)
 
-		cfg, err := LoadConfig()
+		cfg, err := LoadConfig("")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
@@ -131,7 +131,7 @@ mastodonAccessToken: test-token
 		}
 
 		// Defaults should still apply
-		if cfg.TemplateFile != "template.txt" {
+		if cfg.TemplateFile != "post-template.txt" {
 			t.Errorf("TemplateFile default not applied")
 		}
 		if cfg.CharacterLimit != 500 {
