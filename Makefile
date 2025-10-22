@@ -6,19 +6,20 @@ DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 build:
 	@echo "Building for $(shell go env GOOS)/$(shell go env GOARCH)"
-	@if [ "$(shell go env GOOS)" = "linux" ]; then \
-		echo "Using static linking for Linux build"; \
-		go build -ldflags "-X github.com/lmorchard/feed-to-mastodon-go/cmd.Version=$(VERSION) -X github.com/lmorchard/feed-to-mastodon-go/cmd.Commit=$(COMMIT) -X github.com/lmorchard/feed-to-mastodon-go/cmd.Date=$(DATE) -linkmode external -extldflags '-static'" -o feed-to-mastodon main.go; \
-	else \
-		go build -ldflags "-X github.com/lmorchard/feed-to-mastodon-go/cmd.Version=$(VERSION) -X github.com/lmorchard/feed-to-mastodon-go/cmd.Commit=$(COMMIT) -X github.com/lmorchard/feed-to-mastodon-go/cmd.Date=$(DATE)" -o feed-to-mastodon main.go; \
-	fi
+	go build -o feed-to-mastodon ./cmd/feed-to-mastodon
 
 test:
-	go test ./...
+	go test ./internal/...
+
+coverage:
+	go test -coverprofile=coverage.out ./internal/...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 clean:
 	rm -f feed-to-mastodon
 	rm -f feeds.db
+	rm -f coverage.out coverage.html
 
 run: build
 	./feed-to-mastodon

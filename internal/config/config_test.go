@@ -49,15 +49,15 @@ func TestLoadConfig(t *testing.T) {
 
 		// Create temporary config file
 		tmpDir := t.TempDir()
-		configContent := `feedUrl: https://example.com/feed.xml
-mastodonServer: https://mastodon.example
-mastodonAccessToken: test-token-123
-templateFile: custom-template.txt
-databasePath: /tmp/test.db
-characterLimit: 1000
-maxItems: 5
-postVisibility: unlisted
-contentWarning: CW Test
+		configContent := `feed_url: https://example.com/feed.xml
+mastodon_server: https://mastodon.example
+mastodon_token: test-token-123
+template_path: custom-template.txt
+database_path: /tmp/test.db
+character_limit: 1000
+posts_per_run: 5
+post_visibility: unlisted
+content_warning: CW Test
 `
 		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -106,9 +106,9 @@ contentWarning: CW Test
 		viper.Reset()
 
 		tmpDir := t.TempDir()
-		configContent := `feedUrl: https://example.com/feed.xml
-mastodonServer: https://mastodon.example
-mastodonAccessToken: test-token
+		configContent := `feed_url: https://example.com/feed.xml
+mastodon_server: https://mastodon.example
+mastodon_token: test-token
 `
 		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {

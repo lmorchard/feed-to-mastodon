@@ -24,12 +24,12 @@ type Config struct {
 // If configFile is not empty, it will be used; otherwise default locations are searched.
 func LoadConfig(configFile string) (*Config, error) {
 	// Set defaults
-	viper.SetDefault("templateFile", "post-template.txt")
-	viper.SetDefault("databasePath", "feed-to-mastodon.db")
-	viper.SetDefault("characterLimit", 500)
-	viper.SetDefault("maxItems", 0)
-	viper.SetDefault("postVisibility", "public")
-	viper.SetDefault("contentWarning", "")
+	viper.SetDefault("template_path", "post-template.txt")
+	viper.SetDefault("database_path", "feed-to-mastodon.db")
+	viper.SetDefault("character_limit", 500)
+	viper.SetDefault("posts_per_run", 0)
+	viper.SetDefault("post_visibility", "public")
+	viper.SetDefault("content_warning", "")
 
 	// Configure config file
 	if configFile != "" {
@@ -58,15 +58,15 @@ func LoadConfig(configFile string) (*Config, error) {
 
 	// Unmarshal into Config struct
 	cfg := &Config{
-		FeedURL:             viper.GetString("feedUrl"),
-		MastodonServer:      viper.GetString("mastodonServer"),
-		MastodonAccessToken: viper.GetString("mastodonAccessToken"),
-		TemplateFile:        viper.GetString("templateFile"),
-		DatabasePath:        viper.GetString("databasePath"),
-		CharacterLimit:      viper.GetInt("characterLimit"),
-		MaxItems:            viper.GetInt("maxItems"),
-		PostVisibility:      viper.GetString("postVisibility"),
-		ContentWarning:      viper.GetString("contentWarning"),
+		FeedURL:             viper.GetString("feed_url"),
+		MastodonServer:      viper.GetString("mastodon_server"),
+		MastodonAccessToken: viper.GetString("mastodon_token"),
+		TemplateFile:        viper.GetString("template_path"),
+		DatabasePath:        viper.GetString("database_path"),
+		CharacterLimit:      viper.GetInt("character_limit"),
+		MaxItems:            viper.GetInt("posts_per_run"),
+		PostVisibility:      viper.GetString("post_visibility"),
+		ContentWarning:      viper.GetString("content_warning"),
 	}
 
 	return cfg, nil

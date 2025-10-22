@@ -39,7 +39,11 @@ data
 dist/
 build/
 tmp/
+
+# Config files with tokens
+feed-to-mastodon.yaml
 feedspool.yaml
+post-template.txt
 
 coverage.out
 
