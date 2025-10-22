@@ -12,6 +12,7 @@ There are many other tools like this, but this one is mine.
 - OAuth authentication flow for Mastodon
 - Dry-run mode for testing
 - Automatic duplicate detection
+- Automatic purging of entries no longer in feed
 - Configurable post visibility and content warnings
 - Character limit validation
 - Support for posts-per-run limits
@@ -146,11 +147,14 @@ Options:
 
 ### `fetch`
 
-Fetch feed entries and save them to the database.
+Fetch feed entries and save them to the database. By default, also purges entries that are no longer in the feed.
 
 ```bash
-feed-to-mastodon fetch
+feed-to-mastodon fetch [--no-purge]
 ```
+
+Options:
+- `--no-purge` - Skip purging entries that are no longer in the feed
 
 ### `status`
 
