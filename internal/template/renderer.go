@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"unicode/utf8"
 
+	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/mmcdole/gofeed"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +36,8 @@ func New(templatePath string, characterLimit int) (*Renderer, error) {
 
 	// Parse template with custom functions
 	tmpl, err := template.New("post").Funcs(template.FuncMap{
-		"truncate": truncate,
+		"truncate":       truncate,
+		"htmltomarkdown": htmlToMarkdown,
 	}).Parse(string(tmplContent))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
@@ -81,6 +83,18 @@ func truncate(s string, maxLen interface{}) string {
 	}
 
 	return string(runes[:limit-3]) + "..."
+}
+
+// htmlToMarkdown converts HTML content to markdown format.
+// If conversion fails, the original HTML is returned.
+func htmlToMarkdown(html string) string {
+	converter := md.NewConverter("", true, nil)
+	markdown, err := converter.ConvertString(html)
+	if err != nil {
+		logrus.Warnf("Failed to convert HTML to markdown: %v", err)
+		return html
+	}
+	return markdown
 }
 
 // SetFeed sets the feed metadata for use in templates.

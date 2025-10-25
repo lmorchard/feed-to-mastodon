@@ -9,6 +9,74 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
+func TestHtmlToMarkdown(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "paragraph",
+			input: "<p>Hello world</p>",
+			want:  "Hello world",
+		},
+		{
+			name:  "bold text",
+			input: "<p>This is <strong>bold</strong> text</p>",
+			want:  "This is **bold** text",
+		},
+		{
+			name:  "italic text",
+			input: "<p>This is <em>italic</em> text</p>",
+			want:  "This is _italic_ text",
+		},
+		{
+			name:  "link",
+			input: `<p>Check out <a href="https://example.com">this link</a></p>`,
+			want:  "Check out [this link](https://example.com)",
+		},
+		{
+			name:  "unordered list",
+			input: "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>",
+			want:  "- Item 1\n- Item 2\n- Item 3",
+		},
+		{
+			name:  "complex nested HTML",
+			input: "<div><p>A paragraph with <strong>bold</strong> and <em>italic</em>.</p></div>",
+			want:  "A paragraph with **bold** and _italic_.",
+		},
+		{
+			name:  "plain text without HTML",
+			input: "Just plain text",
+			want:  "Just plain text",
+		},
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "heading",
+			input: "<h1>Title</h1><p>Content</p>",
+			want:  "# Title\n\nContent",
+		},
+		{
+			name:  "code block",
+			input: "<code>code snippet</code>",
+			want:  "`code snippet`",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := htmlToMarkdown(tt.input)
+			if got != tt.want {
+				t.Errorf("htmlToMarkdown() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -153,6 +221,41 @@ func TestNew(t *testing.T) {
 
 		if renderer == nil {
 			t.Error("Expected non-nil renderer")
+		}
+	})
+
+	t.Run("htmltomarkdown function is registered", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tmplPath := filepath.Join(tmpDir, "template.txt")
+		// Template using htmltomarkdown function
+		err := os.WriteFile(tmplPath, []byte(`{{.Item.Description | htmltomarkdown}}`), 0o644)
+		if err != nil {
+			t.Fatalf("Failed to create test template: %v", err)
+		}
+
+		renderer, err := New(tmplPath, 500)
+		if err != nil {
+			t.Fatalf("New() error = %v, htmltomarkdown function not registered", err)
+		}
+
+		if renderer == nil {
+			t.Error("Expected non-nil renderer")
+		}
+
+		// Test that it actually converts HTML to markdown
+		item := &gofeed.Item{
+			Description: "<p>Hello <strong>world</strong></p>",
+		}
+		itemJSON, _ := json.Marshal(item)
+
+		result, err := renderer.Render(itemJSON)
+		if err != nil {
+			t.Fatalf("Render() error = %v", err)
+		}
+
+		expected := "Hello **world**"
+		if result != expected {
+			t.Errorf("Render() = %q, want %q", result, expected)
 		}
 	})
 }

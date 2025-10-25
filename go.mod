@@ -14,8 +14,9 @@ require (
 )
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.1 // indirect
-	github.com/andybalholm/cascadia v1.1.0 // indirect
+	github.com/JohannesKaufmann/html-to-markdown v1.6.0 // indirect
+	github.com/PuerkitoBio/goquery v1.9.2 // indirect
+	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
