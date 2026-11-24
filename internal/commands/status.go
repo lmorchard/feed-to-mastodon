@@ -59,6 +59,21 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get last post time: %w", err)
 	}
 
+	// Apply category filters to the unposted backlog, if any filters are set.
+	categoryFilter := newCategoryFilter(cfg)
+	var postable []*database.Entry
+	excludedCount := 0
+	if categoryFilter.Enabled() && unposted > 0 {
+		unpostedEntries, err := db.GetUnpostedEntries(0)
+		if err != nil {
+			return fmt.Errorf("failed to get unposted entries: %w", err)
+		}
+
+		allowed, excluded := partitionByCategory(unpostedEntries, categoryFilter)
+		postable = allowed
+		excludedCount = len(excluded)
+	}
+
 	// Display overview
 	fmt.Println("Feed to Mastodon Status")
 	fmt.Println("=======================")
@@ -88,7 +103,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Total entries: %d\n", total)
 	fmt.Printf("Posted entries: %d\n", posted)
-	fmt.Printf("Unposted entries: %d\n\n", unposted)
+	if categoryFilter.Enabled() {
+		fmt.Printf("Unposted entries: %d\n", unposted)
+		fmt.Printf("Excluded by category filters: %d\n\n", excludedCount)
+	} else {
+		fmt.Printf("Unposted entries: %d\n\n", unposted)
+	}
 
 	if lastFetch != nil {
 		fmt.Printf("Last fetch: %s\n", *lastFetch)
@@ -104,7 +124,21 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show preview of next entries to be posted
-	if unposted > 0 {
+	if categoryFilter.Enabled() && unposted > 0 {
+		if len(postable) == 0 {
+			fmt.Printf("All %d unposted entries are excluded by category filters\n", excludedCount)
+			fmt.Println("Run 'feed-to-mastodon prune --excluded' to delete them")
+			return nil
+		}
+
+		fmt.Println("Next entries to be posted:")
+		fmt.Println("--------------------------")
+		printPostPreview(postable, 5)
+
+		if len(postable) > 5 {
+			fmt.Printf("\n... and %d more\n", len(postable)-5)
+		}
+	} else if unposted > 0 {
 		fmt.Println("Next entries to be posted:")
 		fmt.Println("--------------------------")
 
@@ -137,4 +171,26 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// printPostPreview prints up to limit postable entries as a numbered list.
+func printPostPreview(entries []*database.Entry, limit int) {
+	shown := 0
+	for _, entry := range entries {
+		if shown >= limit {
+			break
+		}
+
+		var item gofeed.Item
+		if err := json.Unmarshal(entry.EntryData, &item); err != nil {
+			logrus.Warnf("Failed to unmarshal entry %s: %v", entry.ID, err)
+			continue
+		}
+
+		shown++
+		fmt.Printf("%d. %s\n", shown, item.Title)
+		if item.Link != "" {
+			fmt.Printf("   %s\n", item.Link)
+		}
+	}
 }

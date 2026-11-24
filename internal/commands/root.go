@@ -39,6 +39,7 @@ using customizable templates.`,
 	rootCmd.AddCommand(NewStatusCmd())
 	rootCmd.AddCommand(NewPostCmd())
 	rootCmd.AddCommand(NewCatchupCmd())
+	rootCmd.AddCommand(NewPruneCmd())
 	rootCmd.AddCommand(NewLinkCmd())
 	rootCmd.AddCommand(NewCodeCmd())
 

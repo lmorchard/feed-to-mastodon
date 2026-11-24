@@ -20,6 +20,8 @@ func TestLoadConfig(t *testing.T) {
 		}()
 
 		viper.Reset()
+		unsetEnv(t, "FEED_TO_MASTODON_INCLUDE_CATEGORIES")
+		unsetEnv(t, "FEED_TO_MASTODON_EXCLUDE_CATEGORIES")
 		cfg, err := LoadConfig("")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
@@ -40,6 +42,12 @@ func TestLoadConfig(t *testing.T) {
 		}
 		if cfg.PostVisibility != "public" {
 			t.Errorf("PostVisibility = %v, want %v", cfg.PostVisibility, "public")
+		}
+		if len(cfg.IncludeCategories) != 0 {
+			t.Errorf("IncludeCategories = %v, want empty", cfg.IncludeCategories)
+		}
+		if len(cfg.ExcludeCategories) != 0 {
+			t.Errorf("ExcludeCategories = %v, want empty", cfg.ExcludeCategories)
 		}
 	})
 
@@ -156,6 +164,130 @@ mastodon_token: test-token
 			t.Errorf("CharacterLimit default not applied")
 		}
 	})
+}
+
+func TestCategoryConfig(t *testing.T) {
+	writeConfig := func(t *testing.T, content string) string {
+		t.Helper()
+
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "feed-to-mastodon.yaml")
+		if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+			t.Fatalf("Failed to create test config: %v", err)
+		}
+
+		return configPath
+	}
+
+	t.Run("loads YAML lists and normalizes values", func(t *testing.T) {
+		defer viper.Reset()
+		viper.Reset()
+		unsetEnv(t, "FEED_TO_MASTODON_INCLUDE_CATEGORIES")
+		unsetEnv(t, "FEED_TO_MASTODON_EXCLUDE_CATEGORIES")
+
+		configPath := writeConfig(t, `feed_url: https://example.com/feed.xml
+mastodon_server: https://mastodon.example
+include_categories:
+  - " Golang "
+  - golang
+  - ""
+  - News
+exclude_categories:
+  - Wishlist
+  - " wishlist "
+  - "  "
+`)
+
+		cfg, err := LoadConfig(configPath)
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if want := []string{"Golang", "News"}; !equalStrings(cfg.IncludeCategories, want) {
+			t.Errorf("IncludeCategories = %v, want %v", cfg.IncludeCategories, want)
+		}
+		if want := []string{"Wishlist"}; !equalStrings(cfg.ExcludeCategories, want) {
+			t.Errorf("ExcludeCategories = %v, want %v", cfg.ExcludeCategories, want)
+		}
+	})
+
+	t.Run("comma-separated environment values override the file", func(t *testing.T) {
+		defer viper.Reset()
+		viper.Reset()
+
+		configPath := writeConfig(t, `feed_url: https://example.com/feed.xml
+mastodon_server: https://mastodon.example
+include_categories: [file-include]
+exclude_categories: [file-exclude]
+`)
+
+		t.Setenv("FEED_TO_MASTODON_INCLUDE_CATEGORIES", "Golang, ,news,GOLANG")
+		t.Setenv("FEED_TO_MASTODON_EXCLUDE_CATEGORIES", "wishlist, Wishlist")
+
+		cfg, err := LoadConfig(configPath)
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if want := []string{"Golang", "news"}; !equalStrings(cfg.IncludeCategories, want) {
+			t.Errorf("IncludeCategories = %v, want %v", cfg.IncludeCategories, want)
+		}
+		if want := []string{"wishlist"}; !equalStrings(cfg.ExcludeCategories, want) {
+			t.Errorf("ExcludeCategories = %v, want %v", cfg.ExcludeCategories, want)
+		}
+	})
+
+	t.Run("empty environment value overrides the file with an empty list", func(t *testing.T) {
+		defer viper.Reset()
+		viper.Reset()
+
+		configPath := writeConfig(t, `feed_url: https://example.com/feed.xml
+mastodon_server: https://mastodon.example
+exclude_categories: [wishlist]
+`)
+
+		t.Setenv("FEED_TO_MASTODON_EXCLUDE_CATEGORIES", "")
+
+		cfg, err := LoadConfig(configPath)
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if len(cfg.ExcludeCategories) != 0 {
+			t.Errorf("ExcludeCategories = %v, want empty", cfg.ExcludeCategories)
+		}
+	})
+}
+
+// unsetEnv removes key for the duration of the test and restores it afterwards.
+func unsetEnv(t *testing.T, key string) {
+	t.Helper()
+
+	value, ok := os.LookupEnv(key)
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatalf("os.Unsetenv(%q) error = %v", key, err)
+	}
+
+	t.Cleanup(func() {
+		if !ok {
+			return
+		}
+		if err := os.Setenv(key, value); err != nil {
+			t.Errorf("os.Setenv(%q) error = %v", key, err)
+		}
+	})
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestValidate(t *testing.T) {
