@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -20,6 +21,8 @@ type Config struct {
 	MaxItems             int
 	PostVisibility       string
 	ContentWarning       string
+	IncludeCategories    []string
+	ExcludeCategories    []string
 }
 
 // LoadConfig loads configuration from file and environment variables.
@@ -58,6 +61,19 @@ func LoadConfig(configFile string) (*Config, error) {
 		}
 	}
 
+	// Viper does not split a comma-separated value into a slice for environment
+	// variables, so handle the category lists explicitly. An environment value,
+	// even an empty one, takes precedence over the config file for that key.
+	includeCategories := viper.GetStringSlice("include_categories")
+	if value, ok := os.LookupEnv("FEED_TO_MASTODON_INCLUDE_CATEGORIES"); ok {
+		includeCategories = strings.Split(value, ",")
+	}
+
+	excludeCategories := viper.GetStringSlice("exclude_categories")
+	if value, ok := os.LookupEnv("FEED_TO_MASTODON_EXCLUDE_CATEGORIES"); ok {
+		excludeCategories = strings.Split(value, ",")
+	}
+
 	// Unmarshal into Config struct
 	cfg := &Config{
 		FeedURL:              viper.GetString("feed_url"),
@@ -71,9 +87,35 @@ func LoadConfig(configFile string) (*Config, error) {
 		MaxItems:             viper.GetInt("posts_per_run"),
 		PostVisibility:       viper.GetString("post_visibility"),
 		ContentWarning:       viper.GetString("content_warning"),
+		IncludeCategories:    normalizeCategories(includeCategories),
+		ExcludeCategories:    normalizeCategories(excludeCategories),
 	}
 
 	return cfg, nil
+}
+
+// normalizeCategories trims values, drops empty strings, and removes
+// case-insensitive duplicates while preserving first-seen order.
+func normalizeCategories(values []string) []string {
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
+	}
+
+	return normalized
 }
 
 // Validate checks that required fields are set and valid

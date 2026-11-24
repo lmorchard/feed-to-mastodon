@@ -16,7 +16,9 @@ There are many other tools like this, but this one is mine.
 - Configurable post visibility and content warnings
 - Character limit validation
 - Support for posts-per-run limits
+- Category include/exclude filters to keep some feed entries off Mastodon
 - Catchup mode to skip old entries
+- Prune command to delete unposted entries excluded by category filters
 - Account verification in status command
 
 ## Installation
@@ -176,6 +178,9 @@ Options:
 - `--dry-run` - Preview posts without actually posting
 - `--posts N` - Maximum number of entries to post (0 = all, overrides config `posts_per_run`)
 
+Entries excluded by category filters are skipped and reported; `--posts`
+applies to the postable entries. See [Category Filtering](#category-filtering).
+
 ### `catchup`
 
 Mark all unposted entries as posted without actually posting them. Useful for skipping old entries.
@@ -186,6 +191,26 @@ feed-to-mastodon catchup [--dry-run]
 
 Options:
 - `--dry-run` - Preview entries without actually marking them
+
+Catchup is indiscriminate: it also marks entries that a category filter would
+exclude, along with every other queued entry. To delete only the entries
+excluded by category filters, use `prune --excluded` instead.
+
+### `prune`
+
+Delete unposted entries that match the current category filters. This is the
+reconciliation step for entries stored before the filters existed.
+
+```bash
+feed-to-mastodon prune --excluded [--dry-run]
+```
+
+Options:
+- `--excluded` - Required. Delete unposted entries excluded by category filters
+- `--dry-run` - Preview what would be deleted without deleting
+
+Bare `prune` refuses to run without `--excluded`, and it errors when no
+include/exclude filters are configured.
 
 ### `link`
 
@@ -255,7 +280,66 @@ post_visibility: "public"
 # Default: 0
 # Can be overridden with --posts flag
 posts_per_run: 0
+
+# OPTIONAL: Category filters. Empty lists disable filtering (default).
+# Entries carrying any exclude category are never posted; if include is set,
+# an entry must carry at least one include category. Matching is
+# case-insensitive and exact. Exclusions win over inclusions.
+# Environment: FEED_TO_MASTODON_EXCLUDE_CATEGORIES / _INCLUDE_CATEGORIES
+# (comma-separated).
+exclude_categories: []
+include_categories: []
 ```
+
+## Category Filtering
+
+RSS/Atom entries often carry `<category>` tags. Both lists are optional and
+default to empty, which disables filtering and leaves today's behavior
+unchanged.
+
+```yaml
+# Entries carrying any of these categories are never posted.
+exclude_categories:
+  - wishlist
+
+# If set, an entry must carry at least one of these categories to be posted.
+include_categories: []
+```
+
+Matching is case-insensitive and exact against a whole category: `Wishlist`
+matches `wishlist`, but `wishlist` does not match `wishlist-adjacent`.
+Exclusions always win over inclusions. An entry with no categories is postable
+when `include_categories` is empty, and not postable when it is set.
+
+The same values can come from the environment as comma-separated lists. An
+environment value, including an empty one, overrides the config file for that
+key:
+
+```bash
+export FEED_TO_MASTODON_EXCLUDE_CATEGORIES="wishlist,drafts"
+export FEED_TO_MASTODON_INCLUDE_CATEGORIES="links,blog"
+```
+
+Filtering happens at post time: matching entries stay in the database, are not
+marked posted, and are skipped by `post`. `post` reports how many entries it
+skipped, and `--posts`/`posts_per_run` applies to the remaining postable
+entries. `status` shows an `Excluded by category filters: N` line and previews
+only entries that would actually be posted.
+
+### Upgrading: reconciling existing rows
+
+Filtering at post time does not clean rows stored before a filter existed.
+Those rows remain unposted forever, so `status` keeps counting them and `post`
+keeps skipping them. After adding or changing filters, reconcile the database
+explicitly:
+
+```bash
+./feed-to-mastodon prune --excluded --dry-run   # preview
+./feed-to-mastodon prune --excluded             # delete
+```
+
+`prune --excluded` deletes only unposted entries matching the current filters.
+It never deletes posted entries.
 
 ## Template Syntax
 

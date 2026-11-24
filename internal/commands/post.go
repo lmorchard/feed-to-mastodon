@@ -68,19 +68,36 @@ func runPost(cmd *cobra.Command, args []string) error {
 		limit = maxPosts
 	}
 
-	// Get unposted entries
-	entries, err := db.GetUnpostedEntries(limit)
+	// Get all unposted entries so category filters are applied before the run
+	// limit: --posts 5 still posts five postable entries when earlier rows are
+	// excluded.
+	entries, err := db.GetUnpostedEntries(0)
 	if err != nil {
 		return fmt.Errorf("failed to get unposted entries: %w", err)
 	}
 
+	entries, excluded := partitionByCategory(entries, newCategoryFilter(cfg))
+
 	if len(entries) == 0 {
+		if len(excluded) > 0 {
+			fmt.Printf("All %d unposted entries are excluded by category filters\n", len(excluded))
+			fmt.Println("Nothing to post. Run 'feed-to-mastodon prune --excluded' to delete them, or adjust include_categories/exclude_categories")
+			return nil
+		}
+
 		fmt.Println("No unposted entries to post")
 		fmt.Println("\nRun 'feed-to-mastodon fetch' to fetch new entries")
 		return nil
 	}
 
+	if limit > 0 && len(entries) > limit {
+		entries = entries[:limit]
+	}
+
 	logrus.Infof("Found %d unposted entries", len(entries))
+	if len(excluded) > 0 {
+		logrus.Infof("Skipped %d entries excluded by category filters", len(excluded))
+	}
 
 	// Create template renderer
 	renderer, err := template.New(cfg.TemplateFile, cfg.CharacterLimit)
@@ -142,6 +159,10 @@ func runPost(cmd *cobra.Command, args []string) error {
 		if posted < len(entries) {
 			fmt.Printf("Failed to post %d entries (see logs for details)\n", len(entries)-posted)
 		}
+	}
+
+	if len(excluded) > 0 {
+		fmt.Printf("Skipped %d entries excluded by category filters\n", len(excluded))
 	}
 
 	return nil

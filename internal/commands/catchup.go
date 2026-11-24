@@ -21,6 +21,10 @@ func NewCatchupCmd() *cobra.Command {
 This is useful when you want to skip posting old entries and only post new entries going forward.
 For example, after adding a new feed or after a long period of inactivity.
 
+Catchup is indiscriminate: it also marks entries that a category filter would
+exclude, along with every other queued entry. To delete only the entries
+excluded by category filters, use 'prune --excluded' instead.
+
 Use --dry-run to preview what would be marked without actually marking.`,
 		RunE: runCatchup,
 	}
